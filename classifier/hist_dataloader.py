@@ -27,6 +27,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
+
+import cv2
+
 # Ignore warnings
 import warnings
 warnings.filterwarnings("ignore")
@@ -181,6 +184,135 @@ class Normalize(transforms.Normalize):
         return image, label
 # In[ ]:
 
+class RandomCrop(object):
+    """Crop randomly the ROI of a image in a sample.
+    Args:
+        nb_crop (int): Number of crops to be made.
+    """
 
+    def __init__(self, nb_crop):
+        assert isinstance(nb_crop, int) and nb_crop > 0
+        self.nb_crop = nb_crop
+
+    def __call__(self, sample):
+        image, label = sample
+
+        # copy labels to match the number of crops
+        label = [label] * self.nb_crop
+
+        # find the ROI
+        gray = rgb2gray(image)
+        # binary image
+        th, im_th = cv2.threshold((gray*255).astype(np.uint8), 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        # find contours
+        contours, hierarchy = cv2.findContours(im_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # find the biggest contour
+        max_area = 0
+        ci = -1
+        for i in range(len(contours)):
+            cnt = contours[i]
+            area = cv2.contourArea(cnt)
+            if area > max_area:
+                max_area = area
+                ci = i
+        cnt = contours[ci]
+        # find countours with similar size (>80% of the biggest one)
+        similar_cnt = [cnt]
+        for i in range(len(contours)):
+            if i == ci:
+                continue
+            cnt = contours[i]
+            area = cv2.contourArea(cnt)
+            if area > 0.8 * max_area:
+                similar_cnt.append(cnt)
+        # merge all similar contours
+        all_cnt = np.vstack(similar_cnt)
+        x, y, w, h = cv2.boundingRect(all_cnt)
+        roi = image[y:y+h, x:x+w, :]
+        roi_h, roi_w = roi.shape[:-1]
+        crops = []
+        for _ in range(self.nb_crop):
+            if roi_h > roi_w:
+                new_h = np.random.randint(roi_w, roi_h)
+                new_w = new_h
+                top = np.random.randint(0, roi_h - new_h)
+                left = np.random.randint(0, roi_w - new_w)
+            else:
+                new_w = np.random.randint(roi_h, roi_w)
+                new_h = new_w
+                top = np.random.randint(0, roi_h - new_h)
+                left = np.random.randint(0, roi_w - new_w)
+            crop = roi[top: top + new_h, left: left + new_w, :]
+            crops.append(crop)
+        
+        return crops, label
+    
+class MultiCropToTensor(object):
+    """Convert list of ndarrays in sample to Tensors."""
+
+    def __call__(self, sample):
+        images, label = sample
+
+        crops = []
+        for image in images:
+            # swap color axis because
+            # numpy image: H x W x C
+            # torch image: C x H x W
+            image = image.transpose((2, 0, 1))
+            crops.append(torch.from_numpy(image).type(torch.FloatTensor))
+        
+        return torch.stack(crops), torch.from_numpy(label).type(torch.FloatTensor)
+    
+class MultiCropRescale(object):
+    """Rescale the list of crops in a sample to a given size.
+
+    Args:
+        output_size (tuple or int): Desired output size. If tuple, output is
+            matched to output_size. If int, smaller of image edges is matched
+            to output_size keeping aspect ratio the same.
+    """
+
+    def __init__(self, output_size):
+        assert isinstance(output_size, (int, tuple))
+        self.output_size = output_size
+
+    def __call__(self, sample):
+        images, label = sample
+        resized_crops = []
+        for image in images:
+            h, w = image.shape[:-1]
+            if isinstance(self.output_size, int):
+                if h > w:
+                    new_h, new_w = self.output_size * h / w, self.output_size
+                else:
+                    new_h, new_w = self.output_size, self.output_size * w / h
+            else:
+                new_h, new_w = self.output_size
+            new_h, new_w = int(new_h), int(new_w)
+            image = transform.resize(image, (new_h, new_w))
+            resized_crops.append(image)
+        
+        return resized_crops, label
+
+class MultiCropNormalize(transforms.Normalize):
+    """Normalize a tensor image with mean and standard deviation.
+    Args:
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
+    """
+
+    def __init__(self, mean, std):
+        super(MultiCropNormalize, self).__init__(mean, std)
+
+    def __call__(self, sample):
+        images, label = sample
+        # images is a N * C * H * W tensor
+        norm_crops = []
+        for image in images:
+            image = super(MultiCropNormalize, self).__call__(image)
+            norm_crops.append(image)
+        norm_crops = torch.stack(norm_crops)
+        
+        return norm_crops, label
 
 

@@ -36,6 +36,7 @@ warnings.filterwarnings("ignore")
 
 
 from hist_dataloader import tiny_Dataset, Rescale, ToTensor, ProtoDataset, Normalize
+from hist_dataloader import RandomCrop, MultiCropRescale, MultiCropToTensor, MultiCropNormalize
 from pretrain_model import get_pretrain_model
 
 
@@ -65,6 +66,45 @@ def train(clf, optimizer, trainloader, criterion, disp):
             inputs = data[0].type(torch.FloatTensor).to(device)
             labels = data[1].type(torch.FloatTensor).to(device)
         
+        value_pred = clf(inputs)
+
+        # label smoothing
+        # 0->1 --> 0.05->0.95
+        epsilon = 0.1
+        smoothed_labels = labels * (1 - epsilon) + 0.5 * epsilon
+
+        value_loss = criterion(value_pred.float(), smoothed_labels).sum()
+        
+#         if(disp):
+#             print(value_loss)
+        
+        optimizer.zero_grad()
+        value_loss.backward()
+        optimizer.step()
+        
+        value_losses.append(float(value_loss.item()))
+
+    return sum(value_losses)/len(value_losses)
+
+def train_crop(clf, optimizer, trainloader, criterion, disp):
+    count = 0
+    policy_losses = []
+    value_losses = []
+    episode_reward = []
+    if(disp):
+        print(device)
+    for i, data in enumerate(trainloader, 0):
+        count += 1
+        if device is None:
+            # squeeze the input at dim=0 (batch size = 1, random crops provide batch)
+            inputs = data[0].squeeze(0).type(torch.FloatTensor)
+            labels = data[1].squeeze(0).type(torch.FloatTensor)
+        else:
+            inputs = data[0].squeeze(0).type(torch.FloatTensor).to(device)
+            labels = data[1].squeeze(0).type(torch.FloatTensor).to(device)
+        
+        assert len(inputs.shape) == 4  # [num_crops, C, H, W]
+
         value_pred = clf(inputs)
 
         # label smoothing
@@ -144,6 +184,66 @@ def comp_test(stage, clf, testloader, criterion, disp):
 #         print('F1:', f1)
     return (correct / total), conmx, sum(loss)/len(loss)
 
+def comp_test_crop(stage, clf, testloader, criterion, disp):
+    correct = 0
+    total = 0
+    # since we're not training, we don't need to calculate the gradients for our outputs
+    preds = np.empty(0)
+    lbs = np.empty(0)
+    loss = []
+    if(disp):
+        print(device)
+    with torch.no_grad():
+        for data in testloader:
+            if device is None:
+                inputs = data[0].squeeze(0)
+                labels = data[1].squeeze(0)
+            else:
+                inputs = data[0].squeeze(0).to(device)
+                labels = data[1].squeeze(0).to(device)
+
+            assert len(inputs.shape) == 4  # [num_crops, C, H, W]
+
+            outputs = clf(inputs)
+            # label smoothing
+            epsilon = 0.1
+            smoothed_labels = labels * (1 - epsilon) + 0.5 * epsilon
+
+            val_loss = criterion(outputs.float(), smoothed_labels).sum()
+            loss.append(val_loss.item())
+#             predicted = torch.round(torch.sigmoid(outputs))
+            predicted = torch.argmax(torch.softmax(outputs, dim=-1), dim=-1)
+            pred_npy = predicted.detach().cpu().numpy()
+            total += labels.size(0)
+            labels = torch.argmax(torch.softmax(labels, dim=-1), dim=-1)
+            lb_npy = labels.detach().cpu().numpy()
+            correct += (pred_npy == lb_npy).sum().item()
+            preds = np.hstack((preds, pred_npy.squeeze()))
+            lbs = np.hstack((lbs, lb_npy.squeeze()))
+
+    conmx = confusion_matrix(lbs, preds)
+    if(disp):
+        print(stage+' accuracy: %.6f %%' % (100 * correct / total))
+#     tn, fp, fn, tp = conmx.ravel()
+#     if (tp + fp) == 0:
+#         prec = 0
+#     else:
+#         prec = tp / (tp + fp)
+#     if (tp + fn) == 0:
+#         recl = 0
+#     else:
+#         recl = tp / (tp + fn)
+#     if (prec+recl) == 0:
+#         f1 = 0
+#     else:
+#         f1 = (2*prec*recl) / (prec+recl)
+#     if(disp):
+#         print('Precision:', prec)
+#         print('Recall:', recl)
+#         print('F1:', f1)
+    return (correct / total), conmx, sum(loss)/len(loss)
+
+
 def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
     start_time = time.time()
 
@@ -173,6 +273,9 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
     cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
@@ -240,6 +343,107 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
 
     return records
 
+def run_train_random_crop(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
+    start_time = time.time()
+
+    test_csv = val_csv
+
+    train_dataset = tiny_Dataset(csv_file=train_csv,
+                                 root_dir=root_folder,
+                                 transform=transforms.Compose([
+                                     RandomCrop(batch_size),
+                                     MultiCropRescale((224,224)),
+                                     MultiCropToTensor(),
+                                     MultiCropNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                 ]))
+    test_dataset = tiny_Dataset(csv_file=test_csv,
+                                root_dir=root_folder,
+                                transform=transforms.Compose([
+                                    Rescale((224,224)),
+                                    ToTensor(),
+                                    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                ]))
+
+    trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=0)
+    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, num_workers=0)
+
+    clf = get_pretrain_model(model_name, nb_cls)
+    clf.to(device)
+
+    # pre-defined loss weights based on preliminary experiments
+    # 1/class_precision
+    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
+    optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
+
+    # Add learning rate scheduler
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer_clf, mode='min', factor=0.5, patience=3, verbose=disp, min_lr=5e-7
+    )
+
+    max_test_perf = 10000
+    min_delta = min_delta
+    patience = patience
+    counter = 0
+
+    MAX_EPISODES = max_episodes
+    PRINT_EVERY = 1
+
+    records = {'train': [],'valid': []}
+    for episode in range(1, MAX_EPISODES+1):  # loop over the dataset multiple times
+        if(disp):
+            print('episode:', episode)
+        critic_loss = train_crop(clf, optimizer_clf, trainloader, criterion, disp)
+        if(disp):
+            print('Train')
+        tr_cur_acc, tr_conmx, tr_loss = comp_test_crop('Train', clf, trainloader, criterion, disp)
+        records['train'].append([tr_cur_acc, tr_conmx, tr_loss])
+        if(disp):
+            print('train loss: ', critic_loss)
+            print('train loss: ', tr_loss)
+            print('Validation')
+        cur_acc, conmx, val_loss = comp_test('Validation', clf, testloader, criterion, disp)
+        records['valid'].append([cur_acc, conmx, val_loss])
+        
+        if(disp):
+            print('validation loss: ', val_loss)
+
+        scheduler.step(val_loss)
+        
+        if max_test_perf - val_loss > min_delta:
+            if(disp):
+                print('refresh patience')
+            max_test_perf = val_loss
+            counter = 0
+            # save model
+            cur_high = [cur_acc, conmx]
+            torch.save(clf.state_dict(), save_path)
+    #                 print('after  val_loss', val_loss, 'best_loss', best_loss)
+        elif max_test_perf - val_loss < min_delta:
+#             if (episode > 50):
+            if(disp):
+                print('patience counter +1')
+            counter += 1
+            if counter >= patience:
+                break
+
+    # print('\t'.join([str(it) for it in [cur_high[3], cur_high[0], cur_high[1], cur_high[2]]]))
+
+
+    if(disp):
+        print('Finished Training')
+    end_time = time.time()
+    time_elapsed = (end_time - start_time)
+    if(disp):
+        print(time_elapsed)
+
+    return records
+
+
 def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
     start_time = time.time()
 
@@ -270,6 +474,9 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
     cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
@@ -347,6 +554,9 @@ def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batc
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
     cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     cur_acc, conmx, val_loss = comp_test('Test', clf, testloader, criterion, disp)
@@ -745,3 +955,44 @@ def run_protonet(var_save_name, model_name, model_save_path,
         with open('result_data_'+var_save_name+'_'+str(iter_count)+'.pkl', 'wb') as fp:
             pickle.dump(exps_rslts, fp)
             print('exps rslts saved successfully to file: ', iter_count)
+
+
+def run_random_crop(var_save_name, model_name, model_save_path,
+                    train_csv, valid_csv, test_csv, base_path,
+                    run_count = 1, disp = False, 
+                    nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
+    
+    exps_rslts = []
+    for iter_count in range(run_count):
+
+        train_records = run_train_random_crop(model_name,
+                                  train_csv,
+                                  valid_csv,
+                                  base_path,
+                                  model_save_path,
+                                  disp,
+                                  nb_cls=nb_cls,
+                                  batch_size=batch_size,
+                                  lr=lr,
+                                  patience=patience,
+                                  min_delta=min_delta,
+                                  max_episodes=max_episodes
+                                  )
+        print(var_save_name, 'train')
+        cur_acc, conmx, val_loss = run_test(model_name,
+                                            test_csv,
+                                            base_path,
+                                            model_save_path,
+                                            disp
+                                            )
+        print(var_save_name, 'test')
+        exps_rslts.append([cur_acc, conmx, val_loss, train_records])
+        print(cur_acc)
+        print(conmx)
+
+        with open('result_data_'+var_save_name+'_'+str(iter_count)+'.pkl', 'wb') as fp:
+            pickle.dump(exps_rslts, fp)
+            print('exps rslts saved successfully to file: ', iter_count)
+        
+#         print(var_save_name, iter_count)
+#         print(exps_rslts)
