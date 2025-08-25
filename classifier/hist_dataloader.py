@@ -198,7 +198,7 @@ class RandomCrop(object):
         image, label = sample
 
         # copy labels to match the number of crops
-        label = [label] * self.nb_crop
+        label = np.array([label] * self.nb_crop)
 
         crops = []
         try:
