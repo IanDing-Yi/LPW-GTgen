@@ -202,11 +202,11 @@ def run(input_file, output_path, verbose=False):
         print("Closed holes in the mesh.")
         print_mesh_info(ms)
 
-    ms.generate_surface_reconstruction_screened_poisson()
+    # ms.generate_surface_reconstruction_screened_poisson()
 
-    if verbose:
-        print("Generated surface reconstruction using screened Poisson.")
-        print_mesh_info(ms)
+    # if verbose:
+    #     print("Generated surface reconstruction using screened Poisson.")
+    #     print_mesh_info(ms)
 
     # Save the processed mesh
     output_path = output_path

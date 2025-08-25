@@ -410,6 +410,57 @@ def render_frag(frag, distance, volume, visualize=False):
 
     return img
 
+def render_frag_naive(frag, distance, volume, vertecies, visualize=False):
+    # Translate so centroid is at [0, 0, -distance]
+    mean_position = frag.vertices.mean(axis=0)
+    _volume = frag.volume if frag.volume > 0 else 1.0
+    _distance = frag.extents.max() * 2
+    _vertices_count = len(frag.vertices)
+    scale = _vertices_count / vertecies
+    translation = -mean_position + np.array([0, 0, -_distance])
+    frag.apply_translation(translation)
+    # print('frag vertex colors', frag.visual.vertex_colors)
+    # Prepare PyVista mesh
+    faces = np.hstack([[3, *face] for face in frag.faces])  # PyVista expects [N, 3, v0, v1, v2, ...]
+    pv_mesh = pv.PolyData(frag.vertices, faces)
+
+    # Add vertex colors if available
+    if hasattr(frag.visual, 'vertex_colors') and frag.visual.vertex_colors is not None:
+        vcolors = frag.visual.vertex_colors
+        if vcolors.shape[1] == 4:
+            vcolors = vcolors[:, :3]
+        pv_mesh.point_data['colors'] = (vcolors / 255.0)  # PyVista expects float in [0,1]
+    # print('converted colors', pv_mesh.point_data['colors'])
+    # Set up plotter
+    plotter = pv.Plotter(off_screen=True, window_size=(512, 512))
+    plotter.add_mesh(pv_mesh, 
+                     scalars='colors' if 'colors' in pv_mesh.point_data else None, 
+                     rgb=True,
+                    #  pbr=True,
+                     smooth_shading=True,
+                     ambient=0.45,
+                    #  metallic=0.5,
+                    #  roughness=0.5,
+                     diffuse=0.4,
+                     specular=0.2,
+                    #  lighting=True,
+                     )
+    plotter.set_background(color = [0.8, 0.8, 0.8], top = [0.85, 0.85, 0.85])
+    plotter.camera_position = [(0, 0, 0), (0, 0, -_distance), (0, 1, 0)]
+
+    plotter.camera.zoom(scale**(1/8))
+
+    # Render
+    img = plotter.screenshot(return_img=True)
+    plotter.close()
+
+    if visualize:
+        plt.imshow(img)
+        plt.axis('off')
+        plt.show()
+
+    return img
+
 def render_frag_realistic(frag, scale, visualize=False):
     # Translate so centroid is at [0, 0, -distance]
     mean_position = frag.vertices.mean(axis=0)
@@ -685,6 +736,49 @@ def render_existing_mesh(obj_file, percentage, original_mesh,
             mesh.apply_transform(np.vstack([np.hstack([rot180, np.zeros((3,1))]), [0,0,0,1]]))
         mesh.apply_translation(mean_position)
         color = render_frag_realistic(mesh, percentage, visualize=visualize)
+        # Save image
+        if save_render and render_savepath is not None:
+            os.makedirs(render_savepath, exist_ok=True)
+            img = Image.fromarray(color)
+            filename = os.path.basename(obj_file)[:-4]
+            img.save(os.path.join(render_savepath, f"rendered_{filename}.jpg"))
+            if verbose:
+                print(f"Saved rendered image to {os.path.join(render_savepath, f'rendered_{filename}.jpg')}")
+    except Exception as e:
+        if verbose:
+            print(f"Error rendering mesh {obj_file}: {e}")
+        color = None
+    return color
+
+def render_existing_mesh_naive(obj_file, original_mesh, 
+                               save_render = False, render_savepath = None, 
+                               verbose=False, visualize=False):
+    try:
+        mesh = trimesh.load(obj_file, force='mesh')  # Change to your mesh file
+        orig_mesh = trimesh.load(original_mesh, force='mesh')  # Change to your mesh file
+        distance = orig_mesh.extents.max() * 2
+        volume = orig_mesh.volume if mesh.volume > 0 else 1.0
+        vertices_count = len(orig_mesh.vertices)
+        
+        # colored_mesh = match_fragment_to_model(mesh, orig_mesh)
+        colored_mesh = match_fragment_to_model_icp(mesh, orig_mesh)
+        mesh = colored_mesh
+
+
+        # rotate to best fit plane
+        mean_position, normal, eigvecs, eigvals = compute_best_fit_plane(mesh, verbose=verbose)
+        side1_is_closer = determine_exterior_side(mesh, normal, verbose=verbose)
+
+        rot_matrix = rot_to_plane(normal)
+        rot180 = R.from_euler('y', 180, degrees=True).as_matrix() # 180 flip
+
+        # Apply rotation to mesh (around mean_position)
+        mesh.apply_translation(-mean_position)
+        mesh.apply_transform(np.vstack([np.hstack([rot_matrix, np.zeros((3,1))]), [0,0,0,1]]))
+        if not side1_is_closer:
+            mesh.apply_transform(np.vstack([np.hstack([rot180, np.zeros((3,1))]), [0,0,0,1]]))
+        mesh.apply_translation(mean_position)
+        color = render_frag_naive(mesh, distance, volume, vertices_count, visualize=visualize)
         # Save image
         if save_render and render_savepath is not None:
             os.makedirs(render_savepath, exist_ok=True)
