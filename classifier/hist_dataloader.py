@@ -20,7 +20,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
 import pandas as pd
-from skimage import io, transform
+from skimage import io, transform, util
 from skimage.color import rgb2gray
 from sklearn.metrics import confusion_matrix
 import numpy as np
@@ -200,50 +200,63 @@ class RandomCrop(object):
         # copy labels to match the number of crops
         label = [label] * self.nb_crop
 
-        # find the ROI
-        gray = rgb2gray(image)
-        # binary image
-        th, im_th = cv2.threshold((gray*255).astype(np.uint8), 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        # find contours
-        contours, hierarchy = cv2.findContours(im_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # find the biggest contour
-        max_area = 0
-        ci = -1
-        for i in range(len(contours)):
-            cnt = contours[i]
-            area = cv2.contourArea(cnt)
-            if area > max_area:
-                max_area = area
-                ci = i
-        cnt = contours[ci]
-        # find countours with similar size (>80% of the biggest one)
-        similar_cnt = [cnt]
-        for i in range(len(contours)):
-            if i == ci:
-                continue
-            cnt = contours[i]
-            area = cv2.contourArea(cnt)
-            if area > 0.8 * max_area:
-                similar_cnt.append(cnt)
-        # merge all similar contours
-        all_cnt = np.vstack(similar_cnt)
-        x, y, w, h = cv2.boundingRect(all_cnt)
-        roi = image[y:y+h, x:x+w, :]
-        roi_h, roi_w = roi.shape[:-1]
         crops = []
-        for _ in range(self.nb_crop):
-            if roi_h > roi_w:
-                new_h = np.random.randint(roi_w, roi_h)
-                new_w = new_h
-                top = np.random.randint(0, roi_h - new_h)
-                left = np.random.randint(0, roi_w - new_w)
-            else:
-                new_w = np.random.randint(roi_h, roi_w)
-                new_h = new_w
-                top = np.random.randint(0, roi_h - new_h)
-                left = np.random.randint(0, roi_w - new_w)
-            crop = roi[top: top + new_h, left: left + new_w, :]
-            crops.append(crop)
+        try:
+            # find the ROI
+            gray = rgb2gray(image)
+            # binary image
+            th, im_th = cv2.threshold((gray*255).astype(np.uint8), 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+            im_th = util.invert(im_th)
+            # find contours
+            contours, hierarchy = cv2.findContours(im_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # find the biggest contour
+            max_area = 0
+            ci = -1
+            img_cnt = image.copy()
+            for i in range(len(contours)):
+                cnt = contours[i]
+                area = cv2.contourArea(cnt)
+
+                x, y, w, h = cv2.boundingRect(cnt)
+                cv2.rectangle(img_cnt, (x, y), (x + w, y + h), (r.randint(1, 255), r.randint(1, 255), r.randint(1, 255)), 10)
+
+                if area > max_area:
+                    max_area = area
+                    ci = i
+            cnt = contours[ci]
+            # find countours with similar size (>80% of the biggest one)
+            similar_cnt = [cnt]
+            for i in range(len(contours)):
+                if i == ci:
+                    continue
+                cnt = contours[i]
+                area = cv2.contourArea(cnt)
+                if area > 0.8 * max_area:
+                    similar_cnt.append(cnt)
+
+            # merge all similar contours
+            all_cnt = np.vstack(similar_cnt)
+            x, y, w, h = cv2.boundingRect(all_cnt)
+
+            roi = image[y:y+h, x:x+w, :]
+            img_h, img_w = image.shape[:-1]
+            roi_h, roi_w = roi.shape[:-1]
+            
+            for _ in range(self.nb_crop):
+                if roi_h > roi_w:
+                    new_h = np.random.randint(0, roi_h/2-10)
+                    new_w = new_h
+                else:
+                    new_w = np.random.randint(0, roi_w/2-10)
+                    new_h = new_w
+                top = max(int(roi_h/4), np.random.randint(1, roi_h - new_h))
+                left = max(int(roi_h/4), np.random.randint(1, roi_w - new_w))
+
+                crop = roi[new_h: min(top + new_h, roi_h), new_w: min(left + new_w, roi_w), :]
+                crops.append(crop)
+        except:
+            print("Random Crop Failed, Use Original Image")
+            crops.append(image)
         
         return crops, label
     
