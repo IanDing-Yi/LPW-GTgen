@@ -172,8 +172,7 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
 
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
-    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
-    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.83937636, 1.83937636, 1., 1.]).to(device)
+    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
@@ -270,7 +269,7 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
 
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
-    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.83937636, 1.83937636, 1., 1.]).to(device)
+    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
@@ -347,7 +346,7 @@ def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batc
 
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
-    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.83937636, 1.83937636, 1., 1.]).to(device)
+    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     cur_acc, conmx, val_loss = comp_test('Test', clf, testloader, criterion, disp)
