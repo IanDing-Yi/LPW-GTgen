@@ -216,10 +216,6 @@ class RandomCrop(object):
             for i in range(len(contours)):
                 cnt = contours[i]
                 area = cv2.contourArea(cnt)
-
-                x, y, w, h = cv2.boundingRect(cnt)
-                cv2.rectangle(img_cnt, (x, y), (x + w, y + h), (r.randint(1, 255), r.randint(1, 255), r.randint(1, 255)), 10)
-
                 if area > max_area:
                     max_area = area
                     ci = i
