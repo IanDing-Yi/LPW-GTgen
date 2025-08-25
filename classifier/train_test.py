@@ -170,7 +170,14 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
     clf = get_pretrain_model(model_name, nb_cls)
     clf.to(device)
 
-    criterion = nn.BCEWithLogitsLoss()
+    # pre-defined loss weights based on preliminary experiments
+    # 1/class_precision
+    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
 
     # Add learning rate scheduler
@@ -263,7 +270,14 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
     clf.to(device)
     clf.load_state_dict(torch.load(model_path))
 
-    criterion = nn.BCEWithLogitsLoss()
+    # pre-defined loss weights based on preliminary experiments
+    # 1/class_precision
+    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
 
     # Add learning rate scheduler
@@ -335,7 +349,15 @@ def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batc
     clf = get_pretrain_model(model_name, nb_cls)
     clf.load_state_dict(torch.load(pth))
     clf.to(device)
-    criterion = nn.BCEWithLogitsLoss()
+
+    # pre-defined loss weights based on preliminary experiments
+    # 1/class_precision
+    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+
+    # 1/class_count: 1.898149595	1	1.46675196	1	1	1
+    cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     cur_acc, conmx, val_loss = comp_test('Test', clf, testloader, criterion, disp)
 
     if(disp):
