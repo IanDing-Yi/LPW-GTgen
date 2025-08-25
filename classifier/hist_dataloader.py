@@ -164,6 +164,21 @@ class ToTensor(object):
         
         return torch.from_numpy(image).type(torch.FloatTensor), torch.from_numpy(label).type(torch.FloatTensor)
 
+class Normalize(transforms.Normalize):
+    """Normalize a tensor image with mean and standard deviation.
+    Args:
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
+    """
+
+    def __init__(self, mean, std):
+        super(Normalize, self).__init__(mean, std)
+
+    def __call__(self, sample):
+#         image, label, diqa = sample
+        image, label = sample
+        image = super(Normalize, self).__call__(image)
+        return image, label
 # In[ ]:
 
 

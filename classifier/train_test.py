@@ -35,7 +35,7 @@ warnings.filterwarnings("ignore")
 # In[2]:
 
 
-from hist_dataloader import tiny_Dataset, Rescale, ToTensor, ProtoDataset
+from hist_dataloader import tiny_Dataset, Rescale, ToTensor, ProtoDataset, Normalize
 from pretrain_model import get_pretrain_model
 
 
@@ -66,7 +66,13 @@ def train(clf, optimizer, trainloader, criterion, disp):
             labels = data[1].type(torch.FloatTensor).to(device)
         
         value_pred = clf(inputs)
-        value_loss = criterion(value_pred.float(), labels).sum()
+
+        # label smoothing
+        # 0->1 --> 0.05->0.95
+        epsilon = 0.1
+        smoothed_labels = labels * (1 - epsilon) + 0.5 * epsilon
+
+        value_loss = criterion(value_pred.float(), smoothed_labels).sum()
         
 #         if(disp):
 #             print(value_loss)
@@ -100,7 +106,11 @@ def comp_test(stage, clf, testloader, criterion, disp):
                 labels = data[1].to(device)
 
             outputs = clf(inputs)
-            val_loss = criterion(outputs.float(), labels).sum()
+            # label smoothing
+            epsilon = 0.1
+            smoothed_labels = labels * (1 - epsilon) + 0.5 * epsilon
+
+            val_loss = criterion(outputs.float(), smoothed_labels).sum()
             loss.append(val_loss.item())
 #             predicted = torch.round(torch.sigmoid(outputs))
             predicted = torch.argmax(torch.softmax(outputs, dim=-1), dim=-1)
@@ -143,13 +153,15 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
                                  root_dir=root_folder,
                                  transform=transforms.Compose([
                                      Rescale((224,224)),
-                                     ToTensor()
+                                     ToTensor(),
+                                     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                  ]))
     test_dataset = tiny_Dataset(csv_file=test_csv,
                                 root_dir=root_folder,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
-                                    ToTensor()
+                                    ToTensor(),
+                                    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                 ]))
 
     trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -233,13 +245,15 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
                                  root_dir=root_folder,
                                  transform=transforms.Compose([
                                      Rescale((224,224)),
-                                     ToTensor()
+                                     ToTensor(),
+                                     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                  ]))
     test_dataset = tiny_Dataset(csv_file=test_csv,
                                 root_dir=root_folder,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
-                                    ToTensor()
+                                    ToTensor(),
+                                    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                 ]))
 
     trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -313,7 +327,8 @@ def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batc
                                 root_dir=root_folder,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
-                                    ToTensor()
+                                    ToTensor(),
+                                    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                 ]))
     testloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, num_workers=0)
     

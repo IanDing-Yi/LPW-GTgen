@@ -19,7 +19,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision
 from torchvision.models import convnext_base, ConvNeXt_Base_Weights
 
-
+import timm
 
 # In[ ]:
 
@@ -172,6 +172,28 @@ def get_convnext_base(output_shape):
     
     return clf
 
+def get_convnextv2_base(output_shape):
+
+    class Classifier(nn.Module):
+        def __init__(self):
+            super(Classifier, self).__init__()
+            self.convnextv2_base_ft = timm.create_model('convnextv2_base', pretrained=True)
+
+            self.relu1 = nn.ReLU()
+            self.new_fc = nn.Linear(in_features=1000, out_features=output_shape, bias=True)
+            
+
+        def forward(self, x):
+            x = self.convnextv2_base_ft(x)
+            x = self.relu1(x)
+            x = self.new_fc(x)
+
+            return x
+    
+    clf = Classifier()
+    
+    return clf
+
 class ProtoNetEncoder(nn.Module):
     def __init__(self, backbone='convnext_base', pretrained=True, proj_dim=None):
         super().__init__()
@@ -231,6 +253,8 @@ def get_pretrain_model(name, output_shape=8):
         return get_efficientnet_b0(output_shape)
     elif name == 'convnext_base':
         return get_convnext_base(output_shape)
+    elif name == 'convnextv2_base':
+        return get_convnextv2_base(output_shape)
     elif name == 'protonet_convnext_base':
         return ProtoNetEncoder(backbone='convnext_base', pretrained=True, proj_dim=None)
     else:

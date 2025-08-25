@@ -8,21 +8,21 @@ def run_all(model_name, gt_path, base_path):
         os.path.join(gt_path, 'manual_validation.csv'),
         os.path.join(gt_path, 'test.csv'),
         base_path, 1, True,
-        nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+        nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
 
     run(model_name + '_naive_outcomes', model_name, model_name + '_naive.pth',
         os.path.join(gt_path, 'naive.csv'),
         os.path.join(gt_path, 'manual_validation.csv'),
         os.path.join(gt_path, 'test.csv'),
         base_path, 1, True,
-        nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+        nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
 
     run(model_name + '_realistic_outcomes', model_name, model_name + '_realistic.pth',
         os.path.join(gt_path, 'realistic.csv'),
         os.path.join(gt_path, 'manual_validation.csv'),
         os.path.join(gt_path, 'test.csv'),
         base_path, 1, True,
-        nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+        nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
 
     run_hybrid(model_name + '_naive_hybrid_outcomes', model_name,
                model_name + '_manual.pth', model_name + '_naive_hybrid.pth',
@@ -30,7 +30,7 @@ def run_all(model_name, gt_path, base_path):
                os.path.join(gt_path, 'manual_validation.csv'),
                os.path.join(gt_path, 'test.csv'),
                base_path, 1, True,
-               nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+               nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
 
     run_hybrid(model_name + '_realistic_hybrid_outcomes', model_name,
                model_name + '_manual.pth', model_name + '_realistic_hybrid.pth',
@@ -38,7 +38,7 @@ def run_all(model_name, gt_path, base_path):
                os.path.join(gt_path, 'manual_validation.csv'),
                os.path.join(gt_path, 'test.csv'),
                base_path, 1, True,
-               nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+               nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
 
     run_hybrid(model_name + '_naive_hybrid_reverse_outcomes', model_name,
                model_name + '_naive.pth', model_name + '_naive_hybrid_reverse.pth',
@@ -46,7 +46,7 @@ def run_all(model_name, gt_path, base_path):
                os.path.join(gt_path, 'manual_validation.csv'),
                os.path.join(gt_path, 'test.csv'),
                base_path, 1, True,
-               nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+               nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
                
     run_hybrid(model_name + '_realistic_hybrid_reverse_outcomes', model_name,
                model_name + '_realistic.pth', model_name + '_realistic_hybrid_reverse.pth',
@@ -54,7 +54,7 @@ def run_all(model_name, gt_path, base_path):
                os.path.join(gt_path, 'manual_validation.csv'),
                os.path.join(gt_path, 'test.csv'),
                base_path, 1, True,
-               nb_cls=6, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
+               nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000)
 
 def main():
     if len(sys.argv) != 4:
