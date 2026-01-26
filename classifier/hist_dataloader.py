@@ -41,16 +41,18 @@ warnings.filterwarnings("ignore")
 class tiny_Dataset(Dataset):
     """Aida-17k dataset."""
 
-    def __init__(self, csv_file, root_dir, transform=None):
+    def __init__(self, csv_file, root_dir, nb_cls=6, transform=None):
         """
         Args:
             csv_file (string): Path to the csv file with labels, comma .
             root_dir (string): Directory with all the images.
+            nb_cls (int): Number of classes in the dataset.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
         self.csv = pd.read_csv(csv_file, header=None, dtype=str)
         self.root_dir = root_dir
         self.transform = transform
+        self.nb_cls = nb_cls
 
     def __len__(self):
         return len(self.csv)
@@ -67,7 +69,7 @@ class tiny_Dataset(Dataset):
         image = io.imread(img_name)
         
         _lb = self.csv.iloc[idx, 1]
-        label = np.zeros(6)
+        label = np.zeros(self.nb_cls)
         label[int(_lb)] = 1.
     
         cls_label = np.array(label)

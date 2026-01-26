@@ -12,53 +12,32 @@ def run_all(model_name, gt_path, base_path):
         base_path, 1, True,
         nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
         cls_weights=[1., 1., 1., 1., 1.])
-
-    run(gt_path + '_' + model_name + '_naive_outcomes',
+    
+    run(gt_path + '_' + model_name + '_comb_outcomes',
         model_name, 
-        gt_path + '_' + model_name + '_naive.pth',
-        os.path.join(gt_path, 'naive.csv'),
+        gt_path + '_' + model_name + '_comb.pth',
+        os.path.join(gt_path, 'comb.csv'),
         os.path.join(gt_path, 'manual_validation.csv'),
         os.path.join(gt_path, 'test.csv'),
         base_path, 1, True,
         nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
         cls_weights=[1., 1., 1., 1., 1.])
-
-    run(gt_path + '_' + model_name + '_realistic_outcomes',
-        model_name,
-        gt_path + '_' + model_name + '_realistic.pth',
-        os.path.join(gt_path, 'realistic.csv'),
-        os.path.join(gt_path, 'manual_validation.csv'),
-        os.path.join(gt_path, 'test.csv'),
-        base_path, 1, True,
-        nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
-        cls_weights=[1., 1., 1., 1., 1.])
-
-    run_hybrid(gt_path + '_' + model_name + '_naive_hybrid_outcomes',
+    
+    run_hybrid(gt_path + '_' + model_name + '_comb_hybrid_outcomes',
                model_name,
                gt_path + '_' + model_name + '_manual.pth',
                gt_path + '_' + model_name + '_naive_hybrid.pth',
-               os.path.join(gt_path, 'naive.csv'),
+               os.path.join(gt_path, 'comb.csv'),
                os.path.join(gt_path, 'manual_validation.csv'),
                os.path.join(gt_path, 'test.csv'),
                base_path, 1, True,
                nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
                cls_weights=[1., 1., 1., 1., 1.])
-
-    run_hybrid(gt_path + '_' + model_name + '_realistic_hybrid_outcomes',
+    
+    run_hybrid(gt_path + '_' + model_name + '_comb_hybrid_reverse_outcomes',
                model_name,
-               gt_path + '_' + model_name + '_manual.pth',
-               gt_path + '_' + model_name + '_realistic_hybrid.pth',
-               os.path.join(gt_path, 'realistic.csv'),
-               os.path.join(gt_path, 'manual_validation.csv'),
-               os.path.join(gt_path, 'test.csv'),
-               base_path, 1, True,
-               nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
-               cls_weights=[1., 1., 1., 1., 1.])
-
-    run_hybrid(gt_path + '_' + model_name + '_naive_hybrid_reverse_outcomes',
-               model_name,
-               gt_path + '_' + model_name + '_naive.pth',
-               gt_path + '_' + model_name + '_naive_hybrid_reverse.pth',
+               gt_path + '_' + model_name + '_comb.pth',
+               gt_path + '_' + model_name + '_comb_hybrid_reverse.pth',
                os.path.join(gt_path, 'manual_train.csv'),
                os.path.join(gt_path, 'manual_validation.csv'),
                os.path.join(gt_path, 'test.csv'),
@@ -66,17 +45,6 @@ def run_all(model_name, gt_path, base_path):
                nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
                cls_weights=[1., 1., 1., 1., 1.])
                
-    run_hybrid(gt_path + '_' + model_name + '_realistic_hybrid_reverse_outcomes',
-               model_name,
-               gt_path + '_' + model_name + '_realistic.pth',
-               gt_path + '_' + model_name + '_realistic_hybrid_reverse.pth',
-               os.path.join(gt_path, 'manual_train.csv'),
-               os.path.join(gt_path, 'manual_validation.csv'),
-               os.path.join(gt_path, 'test.csv'),
-               base_path, 1, True,
-               nb_cls=5, batch_size=32, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
-               cls_weights=[1., 1., 1., 1., 1.])
-
 def main():
     if len(sys.argv) != 4:
         print("Usage: python gen_gt_runall.py <model> <base_path> <gt_path>")

@@ -95,6 +95,7 @@ def train_crop(clf, optimizer, trainloader, criterion, disp):
         print(device)
     for i, data in enumerate(trainloader, 0):
         count += 1
+
         if device is None:
             # squeeze the input at dim=0 (batch size = 1, random crops provide batch)
             inputs = data[0].squeeze(0).type(torch.FloatTensor)
@@ -102,7 +103,7 @@ def train_crop(clf, optimizer, trainloader, criterion, disp):
         else:
             inputs = data[0].squeeze(0).type(torch.FloatTensor).to(device)
             labels = data[1].squeeze(0).type(torch.FloatTensor).to(device)
-        
+
         assert len(inputs.shape) == 4  # [num_crops, C, H, W]
 
         value_pred = clf(inputs)
@@ -149,7 +150,6 @@ def comp_test(stage, clf, testloader, criterion, disp):
             # label smoothing
             epsilon = 0.1
             smoothed_labels = labels * (1 - epsilon) + 0.5 * epsilon
-
             val_loss = criterion(outputs.float(), smoothed_labels).sum()
             loss.append(val_loss.item())
 #             predicted = torch.round(torch.sigmoid(outputs))
@@ -244,13 +244,14 @@ def comp_test_crop(stage, clf, testloader, criterion, disp):
     return (correct / total), conmx, sum(loss)/len(loss)
 
 
-def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
+def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000, cls_weights=[1., 1., 1., 1., 1., 1.]):
     start_time = time.time()
 
     test_csv = val_csv
 
     train_dataset = tiny_Dataset(csv_file=train_csv,
                                  root_dir=root_folder,
+                                 nb_cls=5,
                                  transform=transforms.Compose([
                                      Rescale((224,224)),
                                      ToTensor(),
@@ -258,6 +259,7 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
                                  ]))
     test_dataset = tiny_Dataset(csv_file=test_csv,
                                 root_dir=root_folder,
+                                nb_cls=5,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
                                     ToTensor(),
@@ -272,10 +274,12 @@ def run_train(model_name, train_csv, val_csv, root_folder, save_path, disp, nb_c
 
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
-    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
     
     # 1/class_count: 1.898149595	1	1.46675196	1	1	1
     # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
+    
+    cls_weights = torch.tensor(cls_weights).to(device)
 
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
@@ -350,6 +354,7 @@ def run_train_random_crop(model_name, train_csv, val_csv, root_folder, save_path
 
     train_dataset = tiny_Dataset(csv_file=train_csv,
                                  root_dir=root_folder,
+                                 nb_cls=5,
                                  transform=transforms.Compose([
                                      RandomCrop(batch_size),
                                      MultiCropRescale((224,224)),
@@ -358,6 +363,7 @@ def run_train_random_crop(model_name, train_csv, val_csv, root_folder, save_path
                                  ]))
     test_dataset = tiny_Dataset(csv_file=test_csv,
                                 root_dir=root_folder,
+                                nb_cls=5,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
                                     ToTensor(),
@@ -444,13 +450,14 @@ def run_train_random_crop(model_name, train_csv, val_csv, root_folder, save_path
     return records
 
 
-def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
+def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_path, disp, nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000, cls_weights=[1., 1., 1., 1., 1., 1.]):
     start_time = time.time()
 
     test_csv = val_csv
 
     train_dataset = tiny_Dataset(csv_file=train_csv,
                                  root_dir=root_folder,
+                                 nb_cls=5,
                                  transform=transforms.Compose([
                                      Rescale((224,224)),
                                      ToTensor(),
@@ -458,6 +465,7 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
                                  ]))
     test_dataset = tiny_Dataset(csv_file=test_csv,
                                 root_dir=root_folder,
+                                nb_cls=5,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
                                     ToTensor(),
@@ -473,11 +481,13 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
 
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
-    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
     
     # 1/class_count: 1.898149595	1	1.46675196	1	1	1
     # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
-
+    
+    cls_weights = torch.tensor(cls_weights).to(device)
+    
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     optimizer_clf = optim.AdamW(clf.parameters(), lr=lr)
 
@@ -531,8 +541,10 @@ def run_finetune(model_name, train_csv, val_csv, root_folder, model_path, save_p
             counter += 1
             if counter >= patience:
                 break
+                
+    return records
 
-def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batch_size=10):
+def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batch_size=10, cls_weights=[1., 1., 1., 1., 1., 1.]):
     # run test
     start_time = time.time()
 
@@ -540,6 +552,7 @@ def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batc
     
     test_dataset = tiny_Dataset(csv_file=test_csv,
                                 root_dir=root_folder,
+                                nb_cls=5,
                                 transform=transforms.Compose([
                                     Rescale((224,224)),
                                     ToTensor(),
@@ -553,11 +566,13 @@ def run_test(model_name, test_csv, root_folder, model_path, disp, nb_cls=6, batc
 
     # pre-defined loss weights based on preliminary experiments
     # 1/class_precision
-    cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
+    # cls_weights = torch.tensor([1.46993504, 1.83937636, 1.63301425, 1.10534349, 1., 1.]).to(device)
 
     # 1/class_count: 1.898149595	1	1.46675196	1	1	1
     # cls_weights = torch.tensor([1.898149595, 1., 1.46675196, 1., 1., 1.]).to(device)
-
+    
+    cls_weights = torch.tensor(cls_weights).to(device)
+    
     criterion = nn.BCEWithLogitsLoss(weight=cls_weights)
     cur_acc, conmx, val_loss = comp_test('Test', clf, testloader, criterion, disp)
 
@@ -841,7 +856,8 @@ def evaluate_model(testloader, clf, prototypes, device, disp=False):
 def run(var_save_name, model_name, model_save_path,
         train_csv, valid_csv, test_csv, base_path,
         run_count = 1, disp = False, 
-        nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
+        nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
+        cls_weights=[1., 1., 1., 1., 1., 1.]):
     
     exps_rslts = []
     for iter_count in range(run_count):
@@ -857,14 +873,17 @@ def run(var_save_name, model_name, model_save_path,
                                   lr=lr,
                                   patience=patience,
                                   min_delta=min_delta,
-                                  max_episodes=max_episodes
+                                  max_episodes=max_episodes,
+                                  cls_weights=cls_weights
                                   )
         print(var_save_name, 'train')
         cur_acc, conmx, val_loss = run_test(model_name,
                                             test_csv,
                                             base_path,
                                             model_save_path,
-                                            disp
+                                            disp,
+                                            nb_cls=nb_cls,
+                                            cls_weights=cls_weights
                                             )
         print(var_save_name, 'test')
         exps_rslts.append([cur_acc, conmx, val_loss, train_records])
@@ -881,7 +900,8 @@ def run(var_save_name, model_name, model_save_path,
 def run_hybrid(var_save_name, model_name, pretrain_model_weight_path, model_save_path,
                train_csv, valid_csv, test_csv, base_path,
                run_count = 1, disp = False, 
-               nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000):
+               nb_cls=6, batch_size=10, lr=0.0001, patience=5, min_delta=0, max_episodes=1000,
+               cls_weights=[1., 1., 1., 1., 1., 1.]):
 
     exps_rslts = []
     for iter_count in range(run_count):
@@ -898,14 +918,17 @@ def run_hybrid(var_save_name, model_name, pretrain_model_weight_path, model_save
                                      lr=lr, 
                                      patience=patience, 
                                      min_delta=min_delta, 
-                                     max_episodes=max_episodes
+                                     max_episodes=max_episodes,
+                                     cls_weights=cls_weights
                                     )
         print(var_save_name, 'train')
         cur_acc, conmx, val_loss = run_test(model_name,
                                             test_csv,
                                             base_path,
                                             model_save_path,
-                                            disp
+                                            disp,
+                                            nb_cls=nb_cls,
+                                            cls_weights=cls_weights
                                             )
         print(var_save_name, 'test')
         exps_rslts.append([cur_acc, conmx, val_loss, train_records])
@@ -983,7 +1006,8 @@ def run_random_crop(var_save_name, model_name, model_save_path,
                                             test_csv,
                                             base_path,
                                             model_save_path,
-                                            disp
+                                            disp,
+                                            nb_cls=nb_cls
                                             )
         print(var_save_name, 'test')
         exps_rslts.append([cur_acc, conmx, val_loss, train_records])
