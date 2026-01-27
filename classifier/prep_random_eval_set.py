@@ -27,7 +27,7 @@ def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_siz
     combined_df = pd.concat([train_df, val_df, test_df], ignore_index=True)
     
     # shuffle the combined data
-    combined_df = combined_df.sample(frac=1, random_state=7).reset_index(drop=True)
+    combined_df = combined_df.sample(frac=1).reset_index(drop=True)
     
     # sample new train, val, test sets
     new_train_df = combined_df.iloc[:train_size]

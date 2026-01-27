@@ -58,7 +58,7 @@ def main():
     base_path = sys.argv[2]
     gt_path = sys.argv[3]
     train_size = sys.argv[4]
-    rand_gt_path = train_size + '_' + gt_path + '_' + model + sys.argv[5]
+    rand_gt_path = f"{train_size}_{gt_path}_{model}_{sys.argv[5]}"
     nb_repeats = int(sys.argv[6])
 
     for repeat_idx in range(nb_repeats):
@@ -69,27 +69,27 @@ def main():
         
         print(f"Running model: {model}")
         print(f"Base path: {base_path}")
-        print(f"Ground truth path: {gt_path}")
+        print(f"Ground truth path: {rand_gt_path}")
         print("==============================================================")
         run_all(model, rand_gt_path, base_path)
         print("==============================================================")
 
         # backup .pkl files
-        # 'result_data_' + gt_path + '_' + model_name + <suffix> + '_0' + '.pkl'
+        # 'result_data_' + rand_gt_path + '_' + model_name + <suffix> + '_0' + '.pkl'
             
         suffixes = ['_manual_outcomes', '_naive_outcomes', '_realistic_outcomes',
                     '_naive_hybrid_outcomes', '_realistic_hybrid_outcomes',
                     '_naive_hybrid_reverse_outcomes', '_realistic_hybrid_reverse_outcomes']
         for suffix in suffixes:
-            src_pkl = f"result_data_{gt_path}_{model}{suffix}_0.pkl"
+            src_pkl = f"result_data_{rand_gt_path}_{model}{suffix}_0.pkl"
             # count existing backup files and create a new backup name
-            backup_folder = os.path.join(base_path, f"result_data_{gt_path}_{model}{suffix}")
+            backup_folder = os.path.join(base_path, f"result_data_{rand_gt_path}_{model}{suffix}")
             if not os.path.exists(backup_folder):
                 os.makedirs(backup_folder)
             # count existing files in backup folder
-            existing_files = [f for f in os.listdir(backup_folder) if f.startswith(f"result_data_{gt_path}_{model}{suffix}_0_")]
+            existing_files = [f for f in os.listdir(backup_folder) if f.startswith(f"result_data_{rand_gt_path}_{model}{suffix}_0_")]
             next_index = len(existing_files) + 1
-            dst_pkl = os.path.join(backup_folder, f"result_data_{gt_path}_{model}{suffix}_0_{next_index}.pkl")
+            dst_pkl = os.path.join(backup_folder, f"result_data_{rand_gt_path}_{model}{suffix}_0_{next_index}.pkl")
             if os.path.exists(os.path.join(base_path, src_pkl)):
                 shutil.move(src_pkl, dst_pkl)
                 print(f"Backed up outcome file {src_pkl} to {dst_pkl}_{next_index}.pkl")
