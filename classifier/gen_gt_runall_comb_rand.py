@@ -77,9 +77,7 @@ def main():
         # backup .pkl files
         # 'result_data_' + rand_gt_path + '_' + model_name + <suffix> + '_0' + '.pkl'
             
-        suffixes = ['_manual_outcomes', '_naive_outcomes', '_realistic_outcomes',
-                    '_naive_hybrid_outcomes', '_realistic_hybrid_outcomes',
-                    '_naive_hybrid_reverse_outcomes', '_realistic_hybrid_reverse_outcomes']
+        suffixes = ['_manual_outcomes', '_comb_outcomes', '_comb_hybrid_outcomes', '_comb_hybrid_reverse_outcomes']
         for suffix in suffixes:
             src_pkl = f"result_data_{rand_gt_path}_{model}{suffix}_0.pkl"
             # count existing backup files and create a new backup name
