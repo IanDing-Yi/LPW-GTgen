@@ -16,7 +16,7 @@ import sys
 import shutil
 import random
 
-def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_size):
+def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_size, random_seed=7):
     # read original csv files
     # no header row assumed
     train_df = pd.read_csv(os.path.join(base_path, gt_input_folder, 'manual_train.csv'), header=None)
@@ -27,7 +27,7 @@ def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_siz
     combined_df = pd.concat([train_df, val_df, test_df], ignore_index=True)
     
     # shuffle the combined data
-    combined_df = combined_df.sample(frac=1).reset_index(drop=True)
+    combined_df = combined_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
     
     # sample new train, val, test sets
     new_train_df = combined_df.iloc[:train_size]
@@ -60,15 +60,16 @@ def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_siz
     print(f"New random eval sets created in {gt_output_folder} with train size {train_size}")
 
 def main():
-    if len(sys.argv) != 5:
-        print("Usage: python prep_random_eval_set.py <base_path> <gt_input_folder> <gt_output_folder> <train_size>")
-        print("Example: python prep_random_eval_set.py \"\" groundtruth_swap groundtruth_random_eval 1000")
+    if len(sys.argv) != 6:
+        print("Usage: python prep_random_eval_set.py <base_path> <gt_input_folder> <gt_output_folder> <train_size> <random_seed>")
+        print("Example: python prep_random_eval_set.py \"\" groundtruth_swap groundtruth_random_eval 1000 7")
         sys.exit(1)
     
     base_path = sys.argv[1]
     gt_input_folder = sys.argv[2]
     gt_output_folder = sys.argv[3]
     train_size = int(sys.argv[4])
+    random_seed = int(sys.argv[5])
     
     print(f"Base path: {base_path}")
     print(f"Ground truth input folder: {gt_input_folder}")
@@ -76,7 +77,7 @@ def main():
     print(f"Train set size: {train_size}")
     print("==============================================================")
     
-    prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_size)
+    prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_size, random_seed)
     
     print("==============================================================")
 

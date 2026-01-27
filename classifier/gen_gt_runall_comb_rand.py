@@ -64,7 +64,7 @@ def main():
     for repeat_idx in range(nb_repeats):
         print(f"=================== Repeat {repeat_idx+1} / {nb_repeats} ===================")
         # prepare random eval set
-        prep_random_eval_set(base_path, gt_path, rand_gt_path, int(train_size))
+        prep_random_eval_set(base_path, gt_path, rand_gt_path, int(train_size), random_seed=repeat_idx+1)
 
         
         print(f"Running model: {model}")
