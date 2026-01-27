@@ -57,14 +57,14 @@ def main():
     model = sys.argv[1]
     base_path = sys.argv[2]
     gt_path = sys.argv[3]
-    train_size = sys.argv[4]
+    train_size = int(sys.argv[4])
     rand_gt_path = f"{train_size}_{gt_path}_{model}_{sys.argv[5]}"
     nb_repeats = int(sys.argv[6])
 
     for repeat_idx in range(nb_repeats):
         print(f"=================== Repeat {repeat_idx+1} / {nb_repeats} ===================")
         # prepare random eval set
-        prep_random_eval_set(base_path, gt_path, rand_gt_path, int(train_size), random_seed=repeat_idx+1)
+        prep_random_eval_set(base_path, gt_path, rand_gt_path, train_size, random_seed=repeat_idx+1+(train_size*100))
 
         
         print(f"Running model: {model}")
