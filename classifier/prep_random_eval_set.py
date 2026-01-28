@@ -53,9 +53,9 @@ def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_siz
         print(f"Created new folder {gt_output_folder}")
 
     # save new csv files
-    new_train_df.to_csv(os.path.join(base_path, gt_output_folder, 'manual_train.csv'), index=False)
-    new_val_df.to_csv(os.path.join(base_path, gt_output_folder, 'manual_validation.csv'), index=False)
-    new_test_df.to_csv(os.path.join(base_path, gt_output_folder, 'test.csv'), index=False)
+    new_train_df.to_csv(os.path.join(base_path, gt_output_folder, 'manual_train.csv'), index=False, header=False)
+    new_val_df.to_csv(os.path.join(base_path, gt_output_folder, 'manual_validation.csv'), index=False, header=False)
+    new_test_df.to_csv(os.path.join(base_path, gt_output_folder, 'test.csv'), index=False, header=False)
     
     print(f"New random eval sets created in {gt_output_folder} with train size {train_size}")
 

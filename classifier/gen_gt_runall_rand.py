@@ -97,7 +97,16 @@ def main():
         print(f"=================== Repeat {repeat_idx+1} / {nb_repeats} ===================")
         # prepare random eval set
         prep_random_eval_set(base_path, gt_path, rand_gt_path, train_size, random_seed=repeat_idx+1+(train_size*100))
-
+        
+        # if naive.csv and realistic.csv do not exist, copy from groundtruth
+        naive_csv_path = os.path.join(base_path, rand_gt_path, 'naive.csv')
+        realistic_csv_path = os.path.join(base_path, rand_gt_path, 'realistic.csv')
+        if not os.path.exists(naive_csv_path):
+            shutil.copyfile(os.path.join(base_path, gt_path, 'naive.csv'), naive_csv_path)
+            print(f"Copied naive.csv to {naive_csv_path}")
+        if not os.path.exists(realistic_csv_path):
+            shutil.copyfile(os.path.join(base_path, gt_path, 'realistic.csv'), realistic_csv_path)
+            print(f"Copied realistic.csv to {realistic_csv_path}")
         
         print(f"Running model: {model}")
         print(f"Base path: {base_path}")

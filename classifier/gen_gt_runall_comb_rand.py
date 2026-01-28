@@ -66,6 +66,12 @@ def main():
         # prepare random eval set
         prep_random_eval_set(base_path, gt_path, rand_gt_path, train_size, random_seed=repeat_idx+1+(train_size*100))
 
+        # if comb.csv doesn't exist, copy from groundtruth
+        comb_csv_path = os.path.join(base_path, rand_gt_path, 'comb.csv')
+        if not os.path.exists(comb_csv_path):
+            src_comb_csv = os.path.join(base_path, gt_path, 'comb.csv')
+            shutil.copy(src_comb_csv, comb_csv_path)
+            print(f"Copied comb.csv from {src_comb_csv} to {comb_csv_path}")
         
         print(f"Running model: {model}")
         print(f"Base path: {base_path}")
