@@ -29,10 +29,11 @@ def prep_random_eval_set(base_path, gt_input_folder, gt_output_folder, train_siz
     # shuffle the combined data
     combined_df = combined_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
     
-    # sample new train, val, test sets
-    new_train_df = combined_df.iloc[:train_size]
-    new_val_df = combined_df.iloc[train_size:train_size+1]
-    new_test_df = combined_df.iloc[train_size+1:]
+    # Select train_size rows and one validation row from each class.
+    class_order = combined_df.groupby(combined_df.iloc[:, -1]).cumcount()
+    new_train_df = combined_df.loc[class_order < train_size]
+    new_val_df = combined_df.loc[class_order == train_size]
+    new_test_df = combined_df.loc[class_order > train_size]
     
     # backup existing output folder if it exists
     if os.path.exists(os.path.join(base_path, gt_output_folder)):
