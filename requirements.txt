@@ -1,0 +1,22 @@
+# Deep-learning and model backbones
+torch
+torchvision
+timm
+
+# Image, tabular, and scientific Python tools
+numpy
+pandas
+scikit-image
+scikit-learn
+matplotlib
+opencv-python
+Pillow
+tqdm
+
+# 3D mesh processing and rendering
+pymeshlab
+trimesh
+pyrender
+pywavefront
+pyvista
+pycpd

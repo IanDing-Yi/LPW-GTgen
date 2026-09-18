@@ -27,7 +27,13 @@ Image paths in the CSV files are resolved relative to the `base_path` passed to 
 
 The code is Python-based and uses PyTorch, pandas, NumPy, SciPy, scikit-image, scikit-learn, Pillow, tqdm, trimesh, pyrender, PyMeshLab, PyVista, PyWavefront, pycpd, Matplotlib, and the model dependencies used by `pretrain_model.py`. Install versions compatible with the CUDA/PyTorch installation on the host. Rendering also requires a working OpenGL or headless rendering environment.
 
-There is no environment file in this repository. Before running an experiment, verify that the selected Python environment can import the modules used by `classifier/train_test.py` and `rdm_3dbreak_trimesh.py`.
+Install the dependencies from [requirements.txt](requirements.txt):
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+For PyTorch, select a wheel compatible with the host's CPU/CUDA setup if the default pip resolution is not appropriate. Before running an experiment, verify that the selected Python environment can import the modules used by `classifier/train_test.py` and `rdm_3dbreak_trimesh.py`.
 
 ## Generating fragments
 
