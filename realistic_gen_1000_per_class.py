@@ -1,3 +1,4 @@
+import argparse
 import os
 
 from tqdm import tqdm
@@ -41,46 +42,52 @@ def wrap_render_existing_mesh(params):
         return f"{obj_file},{percentage}"
     return img
 
-log_path = 'G:/dhp_data/artifact_restore_identify/2d_render_realistic_gen_set/logs/'
-gen_path = 'G:/dhp_data/artifact_restore_identify/2d_render_realistic_gen_set/'
-base_path = 'G:/dhp_data/artifact_restore_identify/3d_model_gen_set/'
-orig_path = 'G:/dhp_data/artifact_restore_identify/3d_model_clean_set/'
-apendix = '128_metadata_mesh.txt'
-# Find all txt files containing apendix in their name
-matching_files = []
-folder_name = []
-for root, dirs, files in os.walk(base_path):
-    for file in files:
-        if apendix in file:
-            matching_files.append(os.path.join(root, file))
-            # Remove the need for folder name
-            folder_name.append(file[:-len(apendix)-1])
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--generated-mesh-root", required=True, help="Root containing generated mesh metadata files.")
+    parser.add_argument("--original-mesh-root", required=True, help="Root containing original meshes named by metadata folder.")
+    parser.add_argument("--render-output", required=True, help="Directory for rendered fragment images.")
+    parser.add_argument("--log-dir", required=True, help="Directory for rendering error logs.")
+    parser.add_argument("--metadata-suffix", default="128_metadata_mesh.txt")
+    parser.add_argument("--threads", type=int, default=10)
+    return parser.parse_args()
 
-executor = MultiThreadExecutor(wrap_render_existing_mesh)
 
-print(f"Found {len(matching_files)} files:")
-for idx, f in enumerate(matching_files):
-    print(f"File {idx+1}: {f}")
-    print(f"Folder name: {folder_name[idx]}")
+def main():
+    args = parse_args()
+    os.makedirs(args.log_dir, exist_ok=True)
+    os.makedirs(args.render_output, exist_ok=True)
+    matching_files = []
+    folder_name = []
+    for root, dirs, files in os.walk(args.generated_mesh_root):
+        for file in files:
+            if args.metadata_suffix in file:
+                matching_files.append(os.path.join(root, file))
+                folder_name.append(file[:-len(args.metadata_suffix)-1])
 
-    # Load the found file using pandas
-    df = pd.read_csv(f, sep='\t', header=0)  # Adjust sep/header as needed
-    # print(f"Loaded {len(df)} rows from {f}")
-    
-    orig_file = orig_path + folder_name[idx] + '.obj'
-    meshes = []
-    # Loop through rows
-    for i, row in df.iterrows():
-        meshes.append([i, row.values[4], orig_file, gen_path + folder_name[idx]])
-        # print(meshes[-1])
+    executor = MultiThreadExecutor(wrap_render_existing_mesh)
 
-    threads = 10
-    num_fragments = len(meshes)
-    print(f"Rendering {num_fragments} meshes with {threads} threads...")
+    print(f"Found {len(matching_files)} files:")
+    for idx, f in enumerate(matching_files):
+        print(f"File {idx+1}: {f}")
+        print(f"Folder name: {folder_name[idx]}")
 
-    with ThreadPool(threads) as pool:
-        for frag in tqdm(pool.imap(executor.opWrap, meshes), total=num_fragments):
-            if isinstance(frag, str):
-                with open(log_path + 'error_rendering.txt', 'a') as f:
-                    f.write(frag + '\n')
+        df = pd.read_csv(f, sep='\t', header=0)
+        orig_file = os.path.join(args.original_mesh_root, folder_name[idx] + '.obj')
+        meshes = []
+        for i, row in df.iterrows():
+            meshes.append([i, row.values[4], orig_file, os.path.join(args.render_output, folder_name[idx])])
+
+        num_fragments = len(meshes)
+        print(f"Rendering {num_fragments} meshes with {args.threads} threads...")
+
+        with ThreadPool(args.threads) as pool:
+            for frag in tqdm(pool.imap(executor.opWrap, meshes), total=num_fragments):
+                if isinstance(frag, str):
+                    with open(os.path.join(args.log_dir, 'error_rendering.txt'), 'a') as f:
+                        f.write(frag + '\n')
+
+
+if __name__ == "__main__":
+    main()
 

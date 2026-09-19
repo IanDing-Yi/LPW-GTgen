@@ -1,37 +1,41 @@
+import argparse
+
 import rdm_3dbreak_trimesh as break3d
 
 verbose = False
 visualize = False
 save_frag = True
 save_render = True
-frag_savepath = "G:/dhp_data/artifact_restore_identify/3d_model_naive_gen_set"
-render_savepath = "G:/dhp_data/artifact_restore_identify/2d_render_naive_gen_set"
 
-obj_files = []
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/11100-12-1_BeanPot_OBJ_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/11100-12-2_BeanPotLid_OBJ.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/11100-6_Pitcher_OBJ_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC156.8_FlowerPot_OBJ_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC181.Privy1.99_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC181.Privy2.27_OBJ_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC42.PN274_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC42.PN607_OBJ.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC42.PN673_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC42.TaperedJug_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC86.PN1.361_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC86.PN1.365_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC86.PN1.366_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC86.PN1.374_OBJ_Trimmed_Orientated_Decimated.obj')
-# obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_set/25LC86.PN1.378_OBJ_Trimmed_Orientated_Decimated.obj')
 
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC181.Privy1.99_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC42.PN274_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC42.PN673_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC42.TaperedJug_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC86.PN1.361_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC86.PN1.365_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC86.PN1.366_OBJ_Trimmed_Orientated_Decimated.obj')
-obj_files.append('G:/dhp_data/artifact_restore_identify/3d_model_clean_color_set/25LC86.PN1.378_OBJ_Trimmed_Orientated_Decimated.obj')
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mesh-list", required=True, help="Text file containing one input mesh path per line.")
+    parser.add_argument("--fragment-output", required=True, help="Directory for generated 3D fragments.")
+    parser.add_argument("--render-output", required=True, help="Directory for rendered 2D fragment images.")
+    parser.add_argument("--fragments-per-mesh", type=int, default=1000)
+    parser.add_argument("--workers", type=int, default=14)
+    return parser.parse_args()
 
-for f in obj_files:
-    frag = break3d.run_parallel(f, 1000, 14, verbose, visualize, save_frag, frag_savepath, save_render, render_savepath)
+
+def load_mesh_list(mesh_list):
+    with open(mesh_list, "r", encoding="utf-8") as handle:
+        return [line.strip() for line in handle if line.strip() and not line.startswith("#")]
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    obj_files = load_mesh_list(args.mesh_list)
+
+    for f in obj_files:
+        break3d.run_parallel(
+            f,
+            args.fragments_per_mesh,
+            args.workers,
+            verbose,
+            visualize,
+            save_frag,
+            args.fragment_output,
+            save_render,
+            args.render_output,
+        )

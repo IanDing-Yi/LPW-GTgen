@@ -1,6 +1,10 @@
 # LPW-GTgen
 
-This repository generates pseudo-groundtruth image datasets from 3D Lincoln Pottery Works vessel meshes and trains ceramic classification models on the resulting fragments. It supports two fragment-generation strategies: naive random-plane breaking and realistic fragments rendered from generated 3D meshes. The classifier can train on manually labeled fragments, pseudo-groundtruth fragments, or hybrid combinations of the two.
+This repository generates pseudo-groundtruth image datasets from 3D Lincoln Pottery Works (LPW) vessel meshes and trains ceramic classification models on the resulting fragments. It supports two fragment-generation strategies: naive random-plane breaking and realistic fragments rendered from generated 3D meshes. The classifier can train on manually labeled fragments, pseudo-groundtruth fragments, or hybrid combinations of the two.
+
+## Data availability and redistribution
+
+This repository intentionally contains code, dependency information, and usage instructions only. It does not redistribute the 2D image data, 3D LPW vessel meshes, generated fragments, trained model weights, CSV manifests, or other derived LPW datasets because the repository authors do not control the data rights for those materials. Users must obtain any required source data from authorized data owners and confirm that their use complies with the applicable permissions and licenses.
 
 ## Workflow
 
@@ -43,11 +47,35 @@ For PyTorch, select a wheel compatible with the host's CPU/CUDA setup if the def
 - `naive_gen_1000_per_class_delay_render.py` — variant that renders existing naive fragments in a later pass.
 - `realistic_gen_1000_per_class.py` — renders realistic fragments from generated mesh metadata.
 
-The generation scripts currently contain machine-specific input and output paths, including Windows `G:/...` paths. Update those variables before running them on another machine. For example:
+The generation scripts require local paths to source meshes and output directories. Do not commit source LPW meshes, rendered images, generated fragments, manifests, trained weights, or logs unless you have explicit redistribution permission.
+
+Generate naive fragments from a local text file containing one mesh path per line:
 
 ```bash
-python naive_gen_1000_per_class.py
-python realistic_gen_1000_per_class.py
+python naive_gen_1000_per_class.py \
+  --mesh-list /path/to/local_meshes.txt \
+  --fragment-output /path/to/generated_fragments \
+  --render-output /path/to/rendered_images
+```
+
+Render existing naive fragments:
+
+```bash
+python naive_gen_1000_per_class_delay_render.py \
+  --generated-mesh-root /path/to/generated_fragments \
+  --original-mesh-root /path/to/source_meshes \
+  --render-output /path/to/rendered_images \
+  --log-dir /path/to/logs
+```
+
+Render realistic generated fragments from local mesh metadata:
+
+```bash
+python realistic_gen_1000_per_class.py \
+  --generated-mesh-root /path/to/generated_mesh_metadata \
+  --original-mesh-root /path/to/source_meshes \
+  --render-output /path/to/rendered_images \
+  --log-dir /path/to/logs
 ```
 
 To repair an individual mesh:
@@ -86,7 +114,7 @@ python gen_gt_runall.py <model> <base_path> <gt_path>
 For example:
 
 ```bash
-python gen_gt_runall.py convnext_base /work/swanson/yliu95/pottery_exps/repeating_datasets \
+python gen_gt_runall.py convnext_base /path/to/local/image_root \
   groundtruth_swap_base_gt_rand_balance
 ```
 
@@ -94,7 +122,7 @@ The `base_path` is the root used to resolve image paths. The `gt_path` may be an
 
 ## Repeated experiments
 
-`run_experiment.py` uses datasets under the configured `DATASET_ROOT` and writes each run under `experiment_outputs/`. Its default dataset naming convention is:
+`run_experiment.py` uses datasets under `--dataset-root` or the `LPW_DATASET_ROOT` environment variable and writes each run under `experiment_outputs/`. Its default dataset naming convention is:
 
 ```text
 {k}_groundtruth_swap_base_gt_rand_{balance}
@@ -111,10 +139,11 @@ python run_experiment.py \
   --balance balance \
   --experiment naive_hybrid \
   --k 1 \
-  --repeat 1
+  --repeat 1 \
+  --dataset-root /path/to/local/datasets
 ```
 
-Before using this driver, update `DATASET_ROOT` if the datasets are stored elsewhere. Each run expects `manual_train.csv`, `manual_validation.csv`, `test.csv`, `naive.csv`, and `realistic.csv` in the selected dataset directory. The combined CSV is created automatically when needed.
+Each run expects `manual_train.csv`, `manual_validation.csv`, `test.csv`, `naive.csv`, and `realistic.csv` in the selected dataset directory. The combined CSV is created automatically when needed.
 
 ## Random evaluation splits
 

@@ -1,3 +1,4 @@
+import argparse
 import os
 
 from tqdm import tqdm
@@ -41,35 +42,49 @@ def wrap_render_existing_mesh(params):
         return f"{obj_file}"
     return img
 
-log_path = 'G:/dhp_data/artifact_restore_identify/2d_render_naive_gen_delay_render_set/logs/'
-gen_path = 'G:/dhp_data/artifact_restore_identify/2d_render_naive_gen_delay_render_set/'
-base_path = 'G:/dhp_data/artifact_restore_identify/3d_model_naive_gen_set/'
-orig_path = 'G:/dhp_data/artifact_restore_identify/3d_model_clean_set/'
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--generated-mesh-root", required=True, help="Root containing generated naive mesh fragments and all.txt.")
+    parser.add_argument("--original-mesh-root", required=True, help="Root containing original meshes named by fragment folder.")
+    parser.add_argument("--render-output", required=True, help="Directory for rendered fragment images.")
+    parser.add_argument("--log-dir", required=True, help="Directory for rendering error logs.")
+    parser.add_argument("--threads", type=int, default=10)
+    return parser.parse_args()
 
-with open(os.path.join(base_path, 'all.txt'), 'r') as f:
-    all_files = f.read().splitlines()
 
-file_groups = {}
-for file in all_files:
-    last_folder = os.path.basename(os.path.normpath(file[:file.rfind('/')]))
-    # print(f"Processing file: {file}, last folder: {last_folder}")
-    # break
-    if last_folder not in file_groups:
-        file_groups[last_folder] = []
-    file_groups[last_folder].append([file, orig_path + last_folder + '.obj', gen_path + last_folder])
+def main():
+    args = parse_args()
+    os.makedirs(args.log_dir, exist_ok=True)
+    os.makedirs(args.render_output, exist_ok=True)
 
-executor = MultiThreadExecutor(wrap_render_existing_mesh)
+    with open(os.path.join(args.generated_mesh_root, 'all.txt'), 'r') as f:
+        all_files = f.read().splitlines()
 
-for folder_name in file_groups:
-    print(f"Processing folder: {folder_name}")
-    meshes = file_groups[folder_name]
-    
-    threads = 10
-    num_fragments = len(meshes)
-    print(f"Rendering {num_fragments} meshes in folder '{folder_name}' with {threads} threads...")
+    file_groups = {}
+    for file in all_files:
+        last_folder = os.path.basename(os.path.normpath(file[:file.rfind('/')]))
+        if last_folder not in file_groups:
+            file_groups[last_folder] = []
+        file_groups[last_folder].append([
+            file,
+            os.path.join(args.original_mesh_root, last_folder + '.obj'),
+            os.path.join(args.render_output, last_folder),
+        ])
 
-    with ThreadPool(threads) as pool:
-        for frag in tqdm(pool.imap(executor.opWrap, meshes), total=num_fragments):
-            if isinstance(frag, str):
-                with open(log_path + 'error_rendering.txt', 'a') as f:
-                    f.write(frag + '\n')
+    executor = MultiThreadExecutor(wrap_render_existing_mesh)
+
+    for folder_name in file_groups:
+        print(f"Processing folder: {folder_name}")
+        meshes = file_groups[folder_name]
+        num_fragments = len(meshes)
+        print(f"Rendering {num_fragments} meshes in folder '{folder_name}' with {args.threads} threads...")
+
+        with ThreadPool(args.threads) as pool:
+            for frag in tqdm(pool.imap(executor.opWrap, meshes), total=num_fragments):
+                if isinstance(frag, str):
+                    with open(os.path.join(args.log_dir, 'error_rendering.txt'), 'a') as f:
+                        f.write(frag + '\n')
+
+
+if __name__ == "__main__":
+    main()

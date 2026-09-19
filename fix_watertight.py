@@ -229,12 +229,6 @@ if __name__ == "__main__":
         input_file = sys.argv[2]
         output_path = sys.argv[3]
         run(input_file, output_path, verbose=verbose)
-    elif len(sys.argv) == 2:
-        if sys.argv[1] == '--test':
-            verbose = True
-            input_file = 'G:/dhp_data/artifact_restore_identify/3d_model_test/11100-12-1_BeanPot_OBJ_Decimated.obj'
-            output_path = 'G:/dhp_data/artifact_restore_identify/3d_model_test/11100-12-1_BeanPot_OBJ_Decimated_fix_watertight.obj'
-            run(input_file, output_path, verbose=True)
     else:
         print("No arguments provided.")
         print("Usage: python script.py <input_file> <output_path>")

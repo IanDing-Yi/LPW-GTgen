@@ -6,6 +6,7 @@ timm
 # Image, tabular, and scientific Python tools
 numpy
 pandas
+scipy
 scikit-image
 scikit-learn
 matplotlib
@@ -19,4 +20,5 @@ trimesh
 pyrender
 pywavefront
 pyvista
+pycpd
 pycpd

@@ -6,7 +6,7 @@ import pandas as pd
 from train_test import run, run_hybrid
 
 
-DATASET_ROOT = "/work/swanson/yliu95/pottery_exps/repeating_datasets"
+DEFAULT_DATASET_ROOT = os.environ.get("LPW_DATASET_ROOT")
 DATASET_PREFIX = "{k}_groundtruth_swap_base_gt_rand_{balance}"
 EXPERIMENTS = {
     "manual": "manual",
@@ -111,15 +111,17 @@ def main():
     parser.add_argument("--experiment", choices=tuple(EXPERIMENTS), required=True)
     parser.add_argument("--k", type=int, choices=(1, 2, 3, 4), required=True)
     parser.add_argument("--repeat", type=int, choices=range(1, 21), required=True)
+    parser.add_argument("--dataset-root", default=DEFAULT_DATASET_ROOT, required=DEFAULT_DATASET_ROOT is None)
     args = parser.parse_args()
 
     dataset_name = DATASET_PREFIX.format(k=args.k, balance=args.balance)
-    dataset_dir = os.path.join(DATASET_ROOT, dataset_name)
+    dataset_root = args.dataset_root
+    dataset_dir = os.path.join(dataset_root, dataset_name)
     if not os.path.isdir(dataset_dir):
         raise FileNotFoundError(dataset_dir)
     output_prefix = f"{dataset_name}_{args.model}_{args.experiment}"
     output_dir = os.path.join(
-        DATASET_ROOT,
+        dataset_root,
         "experiment_outputs",
         dataset_name,
         args.model,
@@ -138,7 +140,7 @@ def main():
             args.experiment,
             args.model,
             dataset_dir,
-            DATASET_ROOT,
+            dataset_root,
             output_prefix,
             args.repeat,
         )
